@@ -14,6 +14,12 @@ const routes = [
         meta: { title: '实验列表', icon: '🧪' }
       },
       {
+        path: 'experiments/generate',
+        name: 'ExperimentGenerate',
+        component: () => import('@/views/Experiments/Generate.vue'),
+        meta: { title: '实验生成', icon: '✨' }
+      },
+      {
         path: 'experiments/:id/config',
         name: 'ExperimentConfig',
         component: () => import('@/views/Experiments/Config.vue'),
