@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<body>
+<div id="result">Loading...</div>
+<script>
+fetch('/api/experiments')
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('result').textContent = JSON.stringify(data).substring(0, 200);
+  })
+  .catch(e => {
+    document.getElementById('result').textContent = 'Error: ' + e.message;
+  });
+</script>
+</body>
+</html>

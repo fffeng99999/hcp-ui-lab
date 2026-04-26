@@ -2,7 +2,7 @@ import axios from 'axios'
 import { API_BASE_URL, API_TIMEOUT } from './config'
 
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '',
   timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json'
@@ -10,7 +10,7 @@ const axiosInstance = axios.create({
 })
 
 axiosInstance.interceptors.response.use(
-  (response) => response.data,
+  (response) => response,
   (error) => {
     const message = error.response?.data?.message || error.message || 'Network error'
     return Promise.reject(new Error(message))

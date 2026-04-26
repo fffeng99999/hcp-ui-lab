@@ -4,7 +4,7 @@ export interface ApiResponse<T = any> {
   data?: T
 }
 
-export type ParamType = 'int' | 'float' | 'string' | 'bool' | 'list_int'
+export type ParamType = 'int' | 'float' | 'string' | 'bool' | 'list_int' | 'list_string'
 
 export interface ParamSchema {
   name: string
@@ -18,7 +18,8 @@ export interface Experiment {
   id: string
   name: string
   description: string
-  script_path: string
+  run_script: string
+  report_dir: string
   params: ParamSchema[]
 }
 

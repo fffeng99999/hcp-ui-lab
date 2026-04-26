@@ -15,7 +15,7 @@
       <el-form
         ref="formRef"
         :model="formData"
-        label-width="160px"
+        label-width="200px"
         class="config-form"
       >
         <el-form-item
@@ -111,7 +111,6 @@ onMounted(async () => {
   loading.value = true
   try {
     experiment.value = await getExperiment(expId)
-    // Initialize form data with defaults
     experiment.value.params.forEach(p => {
       formData[p.name] = p.default
     })
@@ -137,12 +136,13 @@ async function submitRun() {
   await formRef.value.validate(async (valid: boolean) => {
     if (!valid) return
     try {
-      // Convert list_int strings to actual comma-separated strings for backend
       const payload: Record<string, any> = {}
       experiment.value?.params.forEach(p => {
         let v = formData[p.name]
-        if (p.type === 'int' || p.type === 'float') {
-          payload[p.name] = v
+        if (p.type === 'int') {
+          payload[p.name] = Math.round(Number(v))
+        } else if (p.type === 'float') {
+          payload[p.name] = Number(v)
         } else if (p.type === 'bool') {
           payload[p.name] = !!v
         } else {
@@ -162,7 +162,7 @@ async function submitRun() {
 
 <style scoped>
 .config-page {
-  max-width: 900px;
+  max-width: 960px;
 }
 .config-card {
   margin-top: 20px;

@@ -1,14 +1,16 @@
 <template>
   <div class="experiments-page">
+    <div style="background: red; color: white; padding: 20px; margin-bottom: 20px; font-size: 20px; font-weight: bold;">
+      🔴 DEBUG: If you see this red box, the component IS rendering!
+    </div>
+    
     <h2 class="page-title">实验列表</h2>
+    
     <el-row :gutter="20">
-      <el-col
-        v-for="exp in experimentStore.experiments"
-        :key="exp.id"
-        :xs="24"
-        :sm="12"
-        :md="8"
-        :lg="6"
+      <el-col 
+        v-for="exp in experiments" 
+        :key="exp.id" 
+        :xs="24" :sm="12" :md="8" :lg="6"
       >
         <el-card class="experiment-card" shadow="hover">
           <template #header>
@@ -18,12 +20,9 @@
             </div>
           </template>
           <p class="exp-desc">{{ exp.description }}</p>
-          <div class="exp-meta">
-            <el-tag size="small" type="success">{{ exp.params.length }} 个参数</el-tag>
-          </div>
           <div class="card-actions">
             <el-button type="primary" size="small" @click="goConfig(exp.id)">
-              <el-icon><Setting /></el-icon> 配置实验
+              配置实验
             </el-button>
           </div>
         </el-card>
@@ -33,17 +32,27 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useExperimentStore } from '@/store/modules/experiment'
-import { Setting } from '@element-plus/icons-vue'
 
 const router = useRouter()
-const experimentStore = useExperimentStore()
 
-onMounted(() => {
-  experimentStore.loadExperiments()
-})
+const experiments = [
+  {
+    id: 'exp1',
+    name: 'Test Experiment 1',
+    description: 'This is a test experiment',
+  },
+  {
+    id: 'exp2', 
+    name: 'Test Experiment 2',
+    description: 'Another test experiment',
+  },
+  {
+    id: 'exp3',
+    name: 'Test Experiment 3', 
+    description: 'Yet another test experiment',
+  }
+]
 
 function goConfig(id: string) {
   router.push(`/experiments/${id}/config`)
@@ -51,40 +60,11 @@ function goConfig(id: string) {
 </script>
 
 <style scoped>
-.page-title {
-  margin: 0 0 20px 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #1e293b;
-}
-.experiment-card {
-  margin-bottom: 20px;
-  transition: transform 0.2s;
-}
-.experiment-card:hover {
-  transform: translateY(-4px);
-}
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-weight: 600;
-}
-.exp-name {
-  font-size: 15px;
-}
-.exp-desc {
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.6;
-  min-height: 40px;
-  margin: 0 0 12px 0;
-}
-.exp-meta {
-  margin-bottom: 12px;
-}
-.card-actions {
-  display: flex;
-  justify-content: flex-end;
-}
+.experiments-page { padding: 20px; }
+.page-title { margin-bottom: 20px; font-size: 24px; }
+.experiment-card { margin-bottom: 20px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.exp-name { font-weight: bold; font-size: 16px; }
+.exp-desc { color: #666; margin: 10px 0; font-size: 14px; line-height: 1.5; }
+.card-actions { display: flex; justify-content: flex-end; }
 </style>
