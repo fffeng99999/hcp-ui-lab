@@ -31,7 +31,9 @@
       </el-col>
     </el-row>
 
-    <el-empty v-if="experimentStore.experiments.length === 0 && !experimentStore.isLoading" description="暂无实验数据" />
+    <el-alert v-if="experimentStore.error" :title="experimentStore.error" type="error" show-icon closable class="error-alert" />
+
+    <el-empty v-if="experimentStore.experiments.length === 0 && !experimentStore.isLoading" :description="experimentStore.error ? '加载失败，请检查后端服务' : '暂无实验数据'" />
   </div>
 </template>
 
@@ -61,6 +63,7 @@ function goGenerate() {
 .experiments-page { padding: 20px; }
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .page-title { margin: 0; font-size: 24px; }
+.error-alert { margin-bottom: 16px; }
 .experiment-card { margin-bottom: 20px; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .exp-name { font-weight: bold; font-size: 16px; }

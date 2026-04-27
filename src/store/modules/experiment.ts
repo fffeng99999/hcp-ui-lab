@@ -7,49 +7,63 @@ export const useExperimentStore = defineStore('experiment', () => {
   const experiments = ref<Experiment[]>([])
   const tasks = ref<Task[]>([])
   const currentTask = ref<Task | null>(null)
-  const isLoading = ref(false)
-  const error = ref<string | null>(null)
+  const loadingStates = ref({
+    experiments: false,
+    tasks: false,
+    runExperiment: false
+  })
+  const errors = ref({
+    experiments: null as string | null,
+    tasks: null as string | null,
+    runExperiment: null as string | null
+  })
 
+  const isLoading = computed(() => 
+    loadingStates.value.experiments || loadingStates.value.tasks || loadingStates.value.runExperiment
+  )
+  const error = computed(() => 
+    errors.value.experiments || errors.value.tasks || errors.value.runExperiment
+  )
   const runningTasks = computed(() => tasks.value.filter(t => t.status === 'running'))
   const completedTasks = computed(() => tasks.value.filter(t => t.status === 'completed'))
 
   async function loadExperiments() {
     try {
-      isLoading.value = true
-      error.value = null
+      loadingStates.value.experiments = true
+      errors.value.experiments = null
       experiments.value = await experimentAPI.getExperiments()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : '加载实验列表失败'
+      errors.value.experiments = err instanceof Error ? err.message : '加载实验列表失败'
     } finally {
-      isLoading.value = false
+      loadingStates.value.experiments = false
     }
   }
 
   async function loadTasks(expId?: string) {
     try {
-      isLoading.value = true
-      error.value = null
+      loadingStates.value.tasks = true
+      errors.value.tasks = null
       tasks.value = await experimentAPI.getTasks(expId)
     } catch (err) {
-      error.value = err instanceof Error ? err.message : '加载任务列表失败'
+      errors.value.tasks = err instanceof Error ? err.message : '加载任务列表失败'
     } finally {
-      isLoading.value = false
+      loadingStates.value.tasks = false
     }
   }
 
   async function runExperiment(id: string, params: Record<string, any>) {
     try {
-      isLoading.value = true
-      error.value = null
+      loadingStates.value.runExperiment = true
+      errors.value.runExperiment = null
       const task = await experimentAPI.runExperiment(id, params)
       tasks.value.unshift(task)
       currentTask.value = task
       return task
     } catch (err) {
-      error.value = err instanceof Error ? err.message : '启动实验失败'
+      errors.value.runExperiment = err instanceof Error ? err.message : '启动实验失败'
       throw err
     } finally {
-      isLoading.value = false
+      loadingStates.value.runExperiment = false
     }
   }
 
@@ -58,7 +72,7 @@ export const useExperimentStore = defineStore('experiment', () => {
       await experimentAPI.deleteTask(id)
       tasks.value = tasks.value.filter(t => t.id !== id)
     } catch (err) {
-      error.value = err instanceof Error ? err.message : '删除任务失败'
+      errors.value.tasks = err instanceof Error ? err.message : '删除任务失败'
       throw err
     }
   }

@@ -1,6 +1,8 @@
 <template>
   <div class="result-page">
     <el-page-header @back="goBack" :title="task?.exp_name || '实验结果'" />
+
+    <el-alert v-if="loadError" :title="loadError" type="error" show-icon closable class="error-alert" />
     
     <div v-if="task" class="task-info">
       <el-card>
@@ -124,15 +126,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getTask, getResultFileUrl } from '@/api/experiment'
-import { API_BASE_URL } from '@/api/config'
 import type { Task } from '@/types'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
-const taskId = route.params.id as string
+
+const taskId = computed(() => {
+  const id = route.params.id
+  if (!id || typeof id !== 'string') {
+    console.error('无效的任务ID')
+    return null
+  }
+  return id
+})
 
 const task = ref<Task | null>(null)
 const logs = ref<string[]>([])
@@ -141,6 +151,7 @@ const logsContainerRef = ref<HTMLElement | null>(null)
 const markdownContent = ref('')
 const jsonContent = ref('')
 const showJsonData = ref(false)
+const loadError = ref<string | null>(null)
 
 const svgFiles = computed(() => {
   if (!task.value?.result_files) return []
@@ -160,7 +171,7 @@ const resultJsonFile = computed(() => {
 const otherFiles = computed(() => {
   if (!task.value?.result_files) return []
   return task.value.result_files
-    .filter(f => !f.endsWith('.svg') && !f.endsWith('.md') && !f.endsWith('result.json') && !f.endsWith('.aux') && !f.endsWith('.log'))
+    .filter(f => !f.endsWith('.svg') && !f.endsWith('.md') && !f.endsWith('result.json'))
     .map(f => ({ name: f, path: f }))
 })
 
@@ -177,7 +188,9 @@ function statusType(status: string) {
 
 function formatTime(t?: string) {
   if (!t) return '-'
-  return new Date(t).toLocaleString('zh-CN')
+  const d = new Date(t)
+  if (isNaN(d.getTime())) return t
+  return d.toLocaleString('zh-CN')
 }
 
 function formatNumber(v: any) {
@@ -199,7 +212,16 @@ function formatMetricValue(val: any): string {
 }
 
 function formatFileName(file: string): string {
-  return file.replace(/^.*[\\/]/, '').replace(/\.[^.]+$/, '')
+  const base = file.replace(/^.*[\\/]/, '')
+  const dotIdx = base.lastIndexOf('.')
+  return dotIdx > 0 ? base.substring(0, dotIdx) : base
+}
+
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=/gi, 'data-blocked=')
+    .replace(/javascript\s*:/gi, 'blocked:')
 }
 
 function goBack() {
@@ -207,35 +229,50 @@ function goBack() {
 }
 
 async function loadTask() {
+  if (!taskId.value) {
+    loadError.value = '任务ID无效'
+    return
+  }
   try {
     const oldStatus = task.value?.status
-    task.value = await getTask(taskId)
+    task.value = await getTask(taskId.value)
+    loadError.value = null
     
     if (task.value?.status === 'completed' && oldStatus !== 'completed') {
       await loadMarkdown()
       await loadJson()
     }
   } catch (err) {
-    console.error('加载任务失败', err)
+    loadError.value = err instanceof Error ? err.message : '加载任务失败'
+    ElMessage.error(loadError.value)
   }
 }
 
 async function loadMarkdown() {
-  if (!markdownFile.value) return
+  if (!markdownFile.value || !taskId.value) return
   try {
-    const url = getResultFileUrl(taskId, markdownFile.value)
+    const url = getResultFileUrl(taskId.value, markdownFile.value)
     const resp = await fetch(url)
-    markdownContent.value = await resp.text()
+    if (!resp.ok) {
+      console.error('加载报告失败:', resp.status, resp.statusText)
+      return
+    }
+    const raw = await resp.text()
+    markdownContent.value = sanitizeHtml(raw)
   } catch (err) {
     console.error('加载报告失败', err)
   }
 }
 
 async function loadJson() {
-  if (!resultJsonFile.value) return
+  if (!resultJsonFile.value || !taskId.value) return
   try {
-    const url = getResultFileUrl(taskId, resultJsonFile.value)
+    const url = getResultFileUrl(taskId.value, resultJsonFile.value)
     const resp = await fetch(url)
+    if (!resp.ok) {
+      console.error('加载JSON失败:', resp.status, resp.statusText)
+      return
+    }
     const data = await resp.json()
     jsonContent.value = JSON.stringify(data, null, 2)
   } catch (err) {
@@ -245,25 +282,40 @@ async function loadJson() {
 
 function downloadFile(file: string | { path: string }) {
   const path = typeof file === 'string' ? file : file.path
-  const url = getResultFileUrl(taskId, path)
-  window.open(url, '_blank')
+  if (!taskId.value) return
+  const url = getResultFileUrl(taskId.value, path)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = path.split('/').pop() || path
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
+let scrollPending = false
 function scrollToBottom() {
-  nextTick(() => {
+  if (scrollPending) return
+  scrollPending = true
+  requestAnimationFrame(() => {
     if (logsContainerRef.value) {
       logsContainerRef.value.scrollTop = logsContainerRef.value.scrollHeight
     }
+    scrollPending = false
   })
 }
 
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
 function connectWS() {
-  const wsUrl = `ws://${window.location.hostname}:9090/ws`
+  if (!taskId.value) return
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const wsHost = window.location.host || 'localhost:9090'
+  const wsUrl = `${wsProtocol}//${wsHost}/ws`
   const socket = new WebSocket(wsUrl)
   socket.onmessage = (event) => {
     try {
       const msg = JSON.parse(event.data)
-      if (msg.task_id === taskId) {
+      if (msg.task_id === taskId.value) {
         if (msg.type === 'log') {
           logs.value.push(msg.payload)
           if (logs.value.length > 1000) logs.value.shift()
@@ -278,9 +330,13 @@ function connectWS() {
     }
   }
   socket.onopen = () => console.log('WS connected')
+  socket.onerror = (err) => {
+    console.error('WebSocket连接错误:', err)
+    ElMessage.warning('实时日志连接异常，请检查后端服务')
+  }
   socket.onclose = () => {
     console.log('WS disconnected, reconnecting...')
-    setTimeout(connectWS, 3000)
+    reconnectTimer = setTimeout(connectWS, 3000)
   }
   ws.value = socket
 }
@@ -291,6 +347,7 @@ onMounted(() => {
   const interval = setInterval(loadTask, 3000)
   onUnmounted(() => {
     clearInterval(interval)
+    if (reconnectTimer) clearTimeout(reconnectTimer)
     ws.value?.close()
   })
 })
@@ -299,6 +356,9 @@ onMounted(() => {
 <style scoped>
 .result-page {
   max-width: 1400px;
+}
+.error-alert {
+  margin-top: 16px;
 }
 .task-info,
 .params-card,

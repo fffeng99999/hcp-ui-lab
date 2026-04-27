@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance'
-import type { Experiment, Task } from '@/types'
+import type { Experiment, Task, ApiResponse } from '@/types'
 
 export interface AIConfig {
   api_url: string
@@ -42,40 +42,40 @@ export interface GeneratedExperiment {
 }
 
 export function getAIConfig() {
-  return axiosInstance.get<{data: AIConfig}>('/api/ai/config').then(r => r.data.data)
+  return axiosInstance.get<ApiResponse<AIConfig>>('/api/ai/config').then(r => r.data.data)
 }
 
 export function updateAIConfig(config: AIConfig) {
-  return axiosInstance.put<{data: AIConfig}>('/api/ai/config', config).then(r => r.data.data)
+  return axiosInstance.put<ApiResponse<AIConfig>>('/api/ai/config', config).then(r => r.data.data)
 }
 
 export function testAIConfig(config: AIConfig) {
-  return axiosInstance.post<{data: {status: string, message: string}}>('/api/ai/test', config).then(r => r.data.data)
+  return axiosInstance.post<ApiResponse<{status: string, message: string}>>('/api/ai/test', config).then(r => r.data.data)
 }
 
 export function generateExperiment(req: ExperimentRequest) {
-  return axiosInstance.post<{data: GeneratedExperiment}>('/api/ai/generate', req).then(r => r.data.data)
+  return axiosInstance.post<ApiResponse<GeneratedExperiment>>('/api/ai/generate', req).then(r => r.data.data)
 }
 
 export function getExperiments() {
-  return axiosInstance.get<{data: Experiment[]}>('/api/experiments').then(r => r.data.data)
+  return axiosInstance.get<ApiResponse<Experiment[]>>('/api/experiments').then(r => r.data.data)
 }
 
 export function getExperiment(id: string) {
-  return axiosInstance.get<{data: Experiment}>(`/api/experiments/${id}`).then(r => r.data.data)
+  return axiosInstance.get<ApiResponse<Experiment>>(`/api/experiments/${id}`).then(r => r.data.data)
 }
 
 export function runExperiment(id: string, params: Record<string, any>) {
-  return axiosInstance.post<{data: Task}>(`/api/experiments/${id}/run`, params).then(r => r.data.data)
+  return axiosInstance.post<ApiResponse<Task>>(`/api/experiments/${id}/run`, params).then(r => r.data.data)
 }
 
 export function getTasks(expId?: string) {
-  const query = expId ? `?exp_id=${expId}` : ''
-  return axiosInstance.get<{data: Task[]}>(`/api/tasks${query}`).then(r => r.data.data)
+  const query = expId ? `?exp_id=${encodeURIComponent(expId)}` : ''
+  return axiosInstance.get<ApiResponse<Task[]>>(`/api/tasks${query}`).then(r => r.data.data)
 }
 
 export function getTask(id: string) {
-  return axiosInstance.get<{data: Task}>(`/api/tasks/${id}`).then(r => r.data.data)
+  return axiosInstance.get<ApiResponse<Task>>(`/api/tasks/${id}`).then(r => r.data.data)
 }
 
 export function deleteTask(id: string) {
@@ -83,5 +83,5 @@ export function deleteTask(id: string) {
 }
 
 export function getResultFileUrl(taskId: string, filePath: string) {
-  return `/api/tasks/${taskId}/results/${filePath}`
+  return `/api/tasks/${taskId}/results/${encodeURIComponent(filePath)}`
 }

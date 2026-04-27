@@ -53,7 +53,8 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  document.title = `${to.meta.title as string} - HCP Lab`
+  const title = to.meta.title
+  document.title = title ? `${title} - HCP Lab` : 'HCP Lab'
 })
 
 export default router
